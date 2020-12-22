@@ -2,7 +2,6 @@
 title: "Analysis of Blood Pressure of Cardiovascular Patients"
 author: "Siyi Lin ID:1005274178"
 date: "December 21, 2020"
-data: "Code and data supporting this analysis is available at: "
 output:
   pdf_document: default
   latex_engine: xelatex
@@ -25,9 +24,10 @@ Observational Study, Cardiovascular Disease, Logistic Regression, Propensity-sco
 ## Introduction
 
 Based on the topic of analysis on the factors of cardiovascular disease, the selected data are observational which need to be filtered by the propensity-score-matching method (Paul, “The central role of the propensity score in observational studies for causal effects”) for balancing the data. The variables in this data record different factors that those factors may affect on the human health to cause cardiovascular disease. Finding a causal inference can provide people an insightful conclusion about the correlation between factors.
-In order to examine the effects between each two variables, propensity-score-matching method can be the best way for this purpose. This analysis will use this method to test the assumption about whether there is a causal link between fasting blood sugar and blood pressure at resting mode by using logistic regression model additionally. Besides, correlations between other factors will be represented by other models.
+In order to examine the effects between each two variables, propensity-score-matching method can be the best way for this purpose. This analysis will use this method to test the assumption about whether there is a causal link between fasting blood sugar and target by using logistic regression model additionally. Besides, correlations between other factors will be represented by other models.
 Based on the original dataset being chosen, the analysis will use propensity-score-matching method to recreate a dataset by adding a new numerical variable and using logistic regression to analyze the data in the Methodology section. After analyzing the data, the results will be shown in the next section to explain whether the causal link exist or not. The discussion and limitation of the results and methods been used will be presented in Discussion section. Inference of this analysis will be provided in the last section.
 
+## Data
 ```{r, include=FALSE}
 
 library(tidyverse)
@@ -36,16 +36,20 @@ library(huxtable)
 Data <- read.csv(file = "/Users/lilyyyyyyyyyy_/Desktop/heart_statlog_cleveland_hungary_final.csv")
 NEWDATA <- 
   Data %>% 
-  dplyr::select(age,sex,chest_pain_type,resting_bp_s,cholesterol,exercise_angina,fasting_blood_sugar)
-glimpse(NEWDATA)
+  dplyr::select(age,sex,chest_pain_type,resting_bp_s,cholesterol,exercise_angina,fasting_blood_sugar,target)
+
 ```
+
+Code and data supporting this analysis is available at:       https://github.com/linsiyill/STA304final.git
+The dataset is taken from three other research datasets used in different research papers. The Nature article listing heart disease database and names of popular datasets used in various heart disease research is shared below. https://www.nature.com/articles/s41597-019-0206-3. The target Population is all the people who may have cardiovascular disease, sample frame is 1190 records of people from US, UK, Switzerland and Hungary. This report will use propensity score matching method to clean the data by setting fasting blood sugar as treatment and target as outcome.
+
 
 ## Methodology
 
 ```{r,include=FALSE}
 #cleaning data by using propensity score matching method 
 NEWDATA<-filter(NEWDATA, resting_bp_s != 0, cholesterol !=0)
-propensity_score <- glm(fasting_blood_sugar ~ age+sex+exercise_angina+chest_pain_type+cholesterol, 
+propensity_score <- glm(fasting_blood_sugar ~ age+sex+exercise_angina+chest_pain_type+cholesterol+resting_bp_s, 
                         family = binomial,
                         data = NEWDATA)
 
@@ -79,41 +83,39 @@ NEWDATA_matched <-
 head(NEWDATA_matched)
 
 NEWDATA_regression <- 
-  lm(resting_bp_s ~ age+sex+chest_pain_type+exercise_angina+fasting_blood_sugar+cholesterol, 
+  lm(target ~ age+sex+chest_pain_type+resting_bp_s+exercise_angina+fasting_blood_sugar+cholesterol,  
                 data = NEWDATA_matched)
 
 huxtable::huxreg(NEWDATA_regression)
 summary(NEWDATA_regression)
 ```
 
-Value|    Intercept|Age |Sex|Chest pain type|Exercise angina|Fasting blood sugar|cholesterol|
------|---------|----|-------|--------|-------|-----|---------|-------|------|
-Estimated Coefficient|297.746|-0.512|-43.92| 0.7737| 21.7975|7.2738|0.001666|
-P-value|< 2e-16|0.21932|1.25e-06|0.83241|0.00257|0.26571|0.916284|
+Value|    Intercept|Age |Sex|Chest pain type|Resting bp s|Exercise angina|Fasting blood sugar|cholesterol|
+-----|---------|----|-------|--------|-------|-----|---------|-------|------|-------|
+Estimated Coefficient|-1.078|0.009|0.220|0.122|0.002|0.368|0.068|0.001|
+P-value|2.28e-05|0.002|0.0001|2.46e-06|0.173|4.63e-12|0.120|0.109
 
 ```{r,echo=FALSE}
-plot(NEWDATA_matched$resting_bp_s,  NEWDATA_matched$cholesterol, main = "Scatterplot of cholesterol and Resting Blood Pressure -- 1005274178", xlab = "resting blood pressure", ylab="cholesterol", pch=19)
+plot(NEWDATA_matched$resting_bp_s,  NEWDATA_matched$cholesterol, main = "Scatterplot of cholesterol and Resting Blood Pressure -- 1005274178", xlab = "resting blood pressure", ylab="Cholesterol", pch=19)
 abline(lm(NEWDATA_matched$cholesterol~NEWDATA_matched$resting_bp_s),col="green")
 
 ```
 
 ```{r,echo=FALSE}
-
 data2 <- data.frame(
-  exercise=as.factor(NEWDATA_matched$exercise_angina),
-  resting_bp_s=c(20,60,100,140,180,220,260,300,340,380,420))
+  Target<-as.factor(NEWDATA_matched$target), Age<-NEWDATA_matched$age)
 
-data2%>% ggplot( aes(x=exercise, y=resting_bp_s, fill=exercise))+geom_boxplot()+geom_jitter(width=0.1,alpha=0.2)+ggtitle("Boxplot of Exercise Angina and Resting Blood Pressure-- 1005274178")
+data2%>% ggplot( aes(x=Target, y=Age, fill=Target))+geom_boxplot()+geom_jitter(width=0.1,alpha=0.2)+ggtitle("Boxplot of Target and Age-- 1005274178")
 ```
 
 ## Results
 
-Based on the propensity matching score method, the report shows a logistic regression results after cleaning the data. The intercept of fasting blood sugar are 3.15096 and P_value are 0.104262, which means exercise_angina is a significant predictor. From the scatterplot of resting blood pressure and cholesterol, we can observe that there is a slightly positive relationship between those two variables. However, this is a weak relationship, we cannot have any conclusion to say that they are positively correlated. We need more data sample to test.
-From the boxplot of exercise and resting blood pressure, boxplot on the left is right-skewed and the other one is right_skewed, we can interpret that patient who does not have angina during exercising normally has lower blood pressure at resting mode than the patient who has angina during exercising, since the median of exercise-0 is lower than exercise-1. Besides, the logistic regression also tells that exercise causing angina affects the blood pressure at resting mode since the intercept is positive and p-value is less than 5%. 
+Based on the propensity matching score method, the report shows a logistic regression results after cleaning the data. The P-value of age, sex, chest pain type and exercise ahgina was less than 5%, which means those predictor are all significant. From the scatterplot of cholesterol and Resting Blood Pressure, we can observe that there is a slightly positive relationship between those two variables. However, this is a weak relationship, we cannot have any conclusion to say that they are positively correlated. We need more data sample to test.
+From the boxplot of target and age, boxplot on the left is symmetric and the other one is left-skewed. We can interpret that older people normally have larger chance to have heart disease than younger ones, since the median of left box is smaller than the median of right box. Besides, the logistic regression also tells that age affects causing cardiovascular disease since the intercept is positive and p-value is less than 5%. 
 
 ## Discussion 
 
-From the results and logistic regression model, we can see there is no significant factor which is predictive of level of blood pressure at resting mode, except for exercise angina predictor. Therefore, the assumption that whether there is a casual link between fasting blood sugar and resting blood pressure is false. However, we cannot deny those predictors immediately since the sample size from the dataset is not enough. A better way for us to do is to collect more sample data and change different predictors as the treatment to test outcome. Additionally, propensity score matching is a popular way but not the best to analyze the data, we should use prpensity score matching,including and excluding different groups of patients to test outcome. If the results are not same, then there will be a large dose of skepticism (David,The Pros and Cons of Propensity Scores).
+From the results and logistic regression model, we can tell that the assumption that whether there is a casual link between fasting blood sugar and target is false. However, we cannot deny this assumption immediately since the sample size from the dataset is not enough. A better way for us to do is to collect more sample data and change different predictors as the treatment to test outcome. Additionally, propensity score matching is a popular way but not the best to analyze the data, we should use prpensity score matching,including and excluding different groups of patients to test outcome. If the results are not same, then there will be a large dose of skepticism (David,The Pros and Cons of Propensity Scores).
 
 ## Reference
 
